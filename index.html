@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html>
 <head>
@@ -237,10 +238,52 @@ function renderPreview(){
     /* formatting rules */
 
 /* multi-line quote (must go first) */
-text = text.replace(/^>>> ([\s\S]*)$/gm, '<div class="quote">$1</div>')
+/* multi-line quote (>>>), line-by-line processing) */
+{
+    const lines = text.split("\n");
+    let result = [];
+    let inQuote = false;
+    let quoteBuffer = [];
+
+    for(let i = 0; i < lines.length; i++){
+        const line = lines[i];
+
+        if(line.startsWith(">>> ")){
+            inQuote = true;
+            quoteBuffer.push(line.slice(4)); // remove >>> 
+        } else if(inQuote){
+            // stop quote at a completely blank line
+            if(line.trim() === ""){
+                result.push('<div class="quote">' + quoteBuffer.join("\n") + '</div>');
+                quoteBuffer = [];
+                inQuote = false;
+            } else {
+                quoteBuffer.push(line);
+            }
+        } else {
+            result.push(line);
+        }
+    }
+
+    // flush any remaining quote at the end of text
+    if(quoteBuffer.length > 0){
+        result.push('<div class="quote">' + quoteBuffer.join("\n") + '</div>');
+    }
+
+    text = result.join("\n");
+}
 
 /* single line quote */
-text = text.replace(/^> (.*$)/gm,'<div class="quote">$1</div>')
+/* single-line quote (>), line-by-line */
+{
+    const lines = text.split("\n");
+    for(let i = 0; i < lines.length; i++){
+        if(lines[i].startsWith("> ") && !lines[i].startsWith(">>> ")){
+            lines[i] = '<div class="quote">' + lines[i].slice(2) + '</div>';
+        }
+    }
+    text = lines.join("\n");
+}
 
 /* headers */
 text = text.replace(/^### (.*$)/gm,'<h3>$1</h3>')
