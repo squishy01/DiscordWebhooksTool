@@ -41,6 +41,10 @@ body{
     overflow-y:auto;
 }
 
+.messageBody{
+    color: #dbdee1;
+}
+
 .discordMessage{
     display:flex;
     flex-direction:column;
@@ -145,14 +149,41 @@ a:hover{
 }
 
 .spoiler{
-    background:#202225;
-    color:transparent;
-    border-radius:3px;
-    cursor:pointer;
+    position: relative;
+    display: inline-block;
+    border-radius: 3px;
+    cursor: pointer;
+    padding: 0 2px;
 }
 
-.spoiler:hover{
-    color:#dcddde;
+.spoiler span{
+    position: relative;
+    z-index: 2;          /* text above overlay */
+    color: transparent;      /* fully hidden no blending */
+    transition: color 0.2s ease;
+}
+
+.spoiler::before{
+    content: "";
+    position: absolute;
+    inset: 0;
+    background-color: #666770;  /* hidden background */
+    border-radius: 3px;
+    transition: background-color 0.3s ease;
+    z-index: 1;
+}
+
+.spoiler:hover::before{
+    background-color: #84858D;  /* subtle hover highlight */
+}
+
+/* REVEAL: text color visible + remove overlay */
+.spoiler.revealed span{
+    color: inherit;  /* visible text */
+}
+
+.spoiler.revealed::before{
+    display: none;   /* remove overlay to reveal text fully */
 }
 
 h1,h2,h3{
@@ -375,6 +406,13 @@ text = text.replace(
 editor.addEventListener("input",renderPreview)
 
 renderPreview()
+
+/* spoiler */
+document.addEventListener("click", e => {
+    if(e.target.classList.contains("spoiler")){
+        e.target.classList.toggle("revealed");
+    }
+});
 
 </script>
 
