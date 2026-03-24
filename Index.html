@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Discord Message Builder</title>
+
+<style>
+body{
+    margin:0;
+    height:100vh;
+    display:flex;
+    background:#1e1f22;
+    color:white;
+    font-family:sans-serif;
+}
+
+/* editor side */
+#editorPanel{
+    flex:1;
+    padding:20px;
+}
+
+#editor{
+    width:100%;
+    height:100%;
+    background:#2b2d31;
+    border:1px solid #1e1f22;
+    border-radius:6px;
+    color:white;
+    padding:10px;
+    resize:none;
+    box-sizing:border-box;
+}
+
+/* preview side */
+#previewPanel{
+    width:420px;
+    background:#313338;
+    padding:20px;
+    overflow-y:auto;
+}
+
+.discordMessage{
+    display:flex;
+    flex-direction:column;
+    gap:4px;
+}
+
+.messageHeader{
+    font-size:14px;
+}
+
+.username{
+    font-weight:600;
+    color:#f2f3f5;
+    margin-right:6px;
+}
+
+.timestamp{
+    font-size:12px;
+    color:#949ba4;
+}
+
+.messageBody{
+    font-size:15px;
+    line-height:1.4;
+    white-space:pre-wrap;
+    word-wrap:break-word;
+}
+
+/* quote block */
+.quote{
+    border-left:4px solid #4e5058;
+    padding-left:10px;
+    margin:4px 0;
+    color:#dbdee1;
+}
+
+/* inline code */
+code{
+    background:#1e1f22;
+    padding:2px 4px;
+    border-radius:4px;
+    font-family:monospace;
+}
+
+/* code block */
+.codeBlock{
+    background:#1e1f22;
+    padding:12px;
+    border-radius:6px;
+    font-family:monospace;
+    white-space:pre;
+    overflow-x:auto;
+}
+
+/* links */
+a{
+    color:#6995CE;
+    text-decoration:none;
+}
+
+a:hover{
+    text-decoration:underline;
+}
+
+/* embeds */
+#embedContainer{
+    margin-top:8px;
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+}
+
+.discordEmbed{
+    display:flex;
+    border-left:4px solid #5865F2;
+    background:#2b2d31;
+    border-radius:4px;
+    padding:10px 12px;
+    max-width:400px;
+}
+
+.embedContent{
+    display:flex;
+    flex-direction:column;
+    gap:4px;
+}
+
+.embedTitle{
+    font-weight:600;
+}
+
+.embedDescription{
+    color:#dbdee1;
+    font-size:14px;
+}
+
+.codeLang{
+  font-size:12px;
+  color:#949ba4;
+  margin-bottom:6px;
+  font-family:monospace;
+}
+</style>
+</head>
+
+<body>
+
+<div id="editorPanel">
+<textarea id="editor" placeholder="Write your Discord message here..."></textarea>
+</div>
+
+<div id="previewPanel">
+<div class="discordMessage">
+
+<div class="messageHeader">
+<span class="username">PreviewUser</span>
+<span class="timestamp">Today at 12:00 PM</span>
+</div>
+
+<div id="previewMessage" class="messageBody"></div>
+<div id="embedContainer"></div>
+
+</div>
+</div>
+
+<script>
+
+const editor = document.getElementById("editor")
+const previewMessage = document.getElementById("previewMessage")
+const embedContainer = document.getElementById("embedContainer")
+
+function escapeHTML(str){
+    return str
+        .replace(/&/g,"&amp;")
+        .replace(/</g,"&lt;")
+        .replace(/>/g,"&gt;")
+}
+
+function processEmbeds(text){
+
+    text = text.replace(
+        /!youtube\((.*?)\)/g,
+        function(match,url){
+
+            const videoID = url.split("v=")[1]
+            if(!videoID) return match
+
+            return `<iframe width="100%" height="200"
+                src="https://www.youtube.com/embed/${videoID}"
+                frameborder="0"
+                allowfullscreen>
+            </iframe>`
+        }
+    )
+
+    return text
+}
+
+function renderPreview(){
+
+    let text = editor.value
+
+    const codeBlocks = []
+
+    text = text.replace(/```(\w+)?\n?([\s\S]*?)```/g,function(match,lang,code){
+
+        codeBlocks.push({
+            lang: lang || "",
+            code: code
+        })
+
+        return "%%CODEBLOCK%%"
+    })
+
+    /* formatting rules */
+
+    text = text.replace(/^> (.*$)/gm,'<div class="quote">$1</div>')
+    text = text.replace(/\*\*(.*?)\*\*/g,"<b>$1</b>")
+    text = text.replace(/\*(.*?)\*/g,"<i>$1</i>")
+    text = text.replace(/\_\_(.*?)\_\_/g,"<u>$1</u>")
+    text = text.replace(/\~\~(.*?)\~\~/g,"<s>$1</s>")
+    text = text.replace(/\`(.*?)\`/g,"<code>$1</code>")
+
+    text = processEmbeds(text)
+
+    /* link detection */
+
+text = text.replace(
+  /(^|[\s>])(https?:\/\/[^\s"<]+)/g,
+  '$1<a href="$2" target="_blank">$2</a>'
+)
+
+    /* restore code blocks */
+
+    let i = 0
+
+    text = text.replace(/%%CODEBLOCK%%/g,function(){
+
+        const block = codeBlocks[i++]
+
+        const code = escapeHTML(block.code)
+
+        const label = block.lang
+            ? `<div class="codeLang">${block.lang}</div>`
+            : ""
+
+        return `<div class="codeBlock">
+            ${label}
+            <pre><code>${code}</code></pre>
+        </div>`
+    })
+
+    previewMessage.innerHTML = processEmbeds(text)
+
+    embedContainer.innerHTML = ""
+
+    /* embed from link */
+
+    const linkMatch = editor.value.match(/https?:\/\/[^\s]+/)
+
+    if(linkMatch){
+
+        const url = linkMatch[0]
+
+        const embed = document.createElement("div")
+        embed.className = "discordEmbed"
+
+        const content = document.createElement("div")
+        content.className = "embedContent"
+
+        const title = document.createElement("div")
+        title.className = "embedTitle"
+        title.textContent = "Link Preview"
+
+        const description = document.createElement("div")
+        description.className = "embedDescription"
+        description.textContent = url
+
+        content.appendChild(title)
+        content.appendChild(description)
+
+        embed.appendChild(content)
+
+        embedContainer.appendChild(embed)
+    }
+}
+
+editor.addEventListener("input",renderPreview)
+
+renderPreview()
+
+</script>
+
+</body>
+</html>
