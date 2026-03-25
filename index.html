@@ -48,7 +48,7 @@ body{
 .discordMessage{
     display:flex;
     flex-direction:column;
-    gap:4px;
+    gap:3px;
 }
 
 .messageHeader{
@@ -67,6 +67,7 @@ body{
 }
 
 .messageBody{
+    margin-top: 3px;
     font-size:15px;
     line-height:1.4;
     white-space:pre-wrap;
@@ -194,6 +195,30 @@ h1,h2,h3{
 h1{font-size:22px;}
 h2{font-size:18px;}
 h3{font-size:16px;}
+
+.listItem{
+        display: flex;
+    align-items: flex-start;
+    line-height: 0.2;   /* tighter than your global 1.4 */
+    margin: 0;          /* remove any extra spacing */
+    padding: 0;
+}
+
+.listItem + .listItem{
+    margin-top: -1px; /* pulls items tighter together */
+}
+
+.listBullet{
+    width: 16px;
+    flex-shrink: 0;
+    text-align: center;
+    margin-right: 7px;  /* ← THIS is the spacing */
+    font-size: 22px; /* 15 was default */
+}
+
+.listContent{
+    flex: 1;
+}
 </style>
 </head>
 
@@ -265,6 +290,39 @@ function renderPreview(){
 
         return "%%CODEBLOCK%%"
     })
+
+
+/* lists (-, *, indentation) */
+{
+    const lines = text.split("\n");
+    let result = [];
+
+    for(let i = 0; i < lines.length; i++){
+        const line = lines[i];
+
+        const match = line.match(/^(\s*)([-*])\s+(.*)/);
+
+        if(match){
+            const indentSpaces = match[1].length;
+            const level = Math.floor(indentSpaces / 2); // 2 spaces per level
+            const content = match[3];
+
+            let bullet = level === 0 ? "•" : "◦";;
+
+            result.push(
+                `<div class="listItem" style="margin-left:${level * 19}px;">
+                    <span class="listBullet">${bullet}</span>
+                    <span class="listContent">${content}</span>
+                </div>`
+            );
+        } else {
+            result.push(line);
+        }
+    }
+
+    text = result.join("\n");
+}
+
 
     /* formatting rules */
 
@@ -341,12 +399,20 @@ text = text.replace(/\`(.*?)\`/g,"<code>$1</code>")
 
     text = processEmbeds(text)
 
+/* masked links [text](url) */
+text = text.replace(
+    /\[([^\]]+)\]\((https?:\/\/[^\s]+)\)/g,
+    '<a href="$2" target="_blank">$1</a>'
+);
+
     /* link detection */
 
 text = text.replace(
   /(^|[\s>])(https?:\/\/[^\s"<]+)/g,
   '$1<a href="$2" target="_blank">$2</a>'
 )
+
+
 
     /* restore code blocks */
 
