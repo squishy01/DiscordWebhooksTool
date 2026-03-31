@@ -481,6 +481,17 @@ document.addEventListener("click", e => {
     }
 });
 
+// Auto-focus the editor on page load
+window.addEventListener("DOMContentLoaded", () => {
+    editor.focus();
+});
+
+// Optional: keep focus after preview updates
+editor.addEventListener("input", () => {
+    renderPreview();
+    editor.focus();
+});
+
 </script>
 
 </body>
